@@ -1,3 +1,7 @@
+%%% This file executes all changes we agreed upon for GLODAPv2.2019
+%%% If you want to run this code yourself, please make sure that you cloned the entire repository AND change all "cd..." occurances 
+%%% in this code according to your folder structure
+
 clear all
 cd 'E:\'
 
@@ -521,7 +525,7 @@ for kk=1:length(fileNames)
 end
 
 % Assign pco2 temperatures (for the cruises where the data doesn't have the needed column, i.e. are set to NaN until now) 
-% First cruises with reported 20캜
+% First cruises with reported 20째C
 cruises_20={'06MT19900123','06MT19910210','06MT19940329','316N19871123','316N19970717','316N19970815','31WT19910716','33MW19930704'};
 for i=1:length(cruises_20)
     ind=find(strcmp(cruises_20{i},expocode)==1);
@@ -535,7 +539,7 @@ for i=1:length(cruises_20)
 end
 clear cruises_20 i nans ind
 
-% Cruise with 4캜
+% Cruise with 4째C
 ind=find(strcmp('320619960503',expocode)==1);
 ind=expocodeno(ind);
 ind=find(G2cruise==ind);
@@ -678,7 +682,7 @@ save('GLODAPv2.2019_updated_interim4.mat')
 clear all
 
 
-%% Caluclate pco2 on constant 20캜
+%% Caluclate pco2 on constant 20째C
 % Load GLODAP data as structure 
 G2=load('GLODAPv2.2019_updated_interim4.mat');
 
@@ -699,7 +703,7 @@ talk(isnan(talk))=G2.G2salinity(isnan(talk)).*67;
 ind=find(~isnan(G2.G2pcotemp));
 ind_temp=find(G2.G2pcotemp(ind)~=20);
 
-% Calculate values for 20캜 using TA
+% Calculate values for 20째C using TA
 [DATA,~,~]=CO2SYS(talk(ind(ind_temp)),G2.G2pco(ind(ind_temp)),1,4,G2.G2salinity(ind(ind_temp)),G2.G2pcotemp(ind(ind_temp)),20,0,0,silicate(ind(ind_temp)),phosphate(ind(ind_temp)),1,10,1);
 G2.G2pco(ind(ind_temp))=DATA(:,19);
 G2.G2temp(ind(ind_temp))=20;
@@ -785,7 +789,7 @@ misspco_tco=CO2SYS(G2.G2phts25p0(ind_misspco_tco),G2.G2tco2(ind_misspco_tco),3,2
 G2.G2pco(ind_misspco_tco)=misspco_tco(:,19);
 
 % DIC and TA using pH
-% First calculate pco2 for 25캜 to agree with pH input temperature and then do regular CO2SYS caluclation
+% First calculate pco2 for 25째C to agree with pH input temperature and then do regular CO2SYS caluclation
 holder=CO2SYS(talk,G2.G2pco,1,4,G2.G2salinity,20,25,0,0,silicate,phosphate,1,10,1);
 holder_pco=holder(:,19);
 misstco_ph=CO2SYS(holder_pco(ind_misstco_ph),G2.G2phts25p0(ind_misstco_ph),4,3,G2.G2salinity(ind_misstco_ph),25,G2.G2temperature(ind_misstco_ph),0,G2.G2pressure(ind_misstco_ph),silicate(ind_misstco_ph),phosphate(ind_misstco_ph),1,10,1);
