@@ -1,6 +1,6 @@
 %%% This file executes all changes we agreed upon for GLODAPv2.2019
 %%% If you want to run this code yourself, please make sure that you cloned the entire repository AND change all "cd..." occurances 
-%%% in this code according to your folder structure
+%%% in this code according to your folder structure. Note that changes for the 74EQ cruise are not yet incooperated, as we are still waiting on replies from the PIs.
 
 clear all
 cd 'E:\'
