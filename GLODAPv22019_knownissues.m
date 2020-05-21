@@ -1,7 +1,3 @@
-%%% This file executes all changes we agreed upon for GLODAPv2.2019
-%%% If you want to run this code yourself, please make sure that you cloned the entire repository AND change all "cd..." occurances 
-%%% in this code according to your folder structure. Note that changes for the 74EQ cruise are not yet incooperated, as we are still waiting on replies from the PIs.
-
 clear all
 cd 'E:\'
 
@@ -42,10 +38,10 @@ ind_1039_station=find(G2station(ind_1039)==133);
 ind_cast1=find(G2cast(ind_1039(ind_1039_station))==1);
 ind_cast2=find(G2cast(ind_1039(ind_1039_station))==2);
 ind_bottle=find(ismember(G2bottle(ind_1039(ind_1039_station(ind_cast2))),[8,9,10,11]));
-G2phts25p0(ind_1039(ind_1039_station(ind_cast1)))=NaN;
+G2phts25p0(ind_1039(ind_1039_station(ind_cast1)))=flipud(G2phts25p0(ind_1039(ind_1039_station(ind_cast1))));
 G2phts25p0(ind_1039(ind_1039_station(ind_cast2(ind_bottle))))=NaN;
-G2phts25p0(ind_1039(ind_1039_station(ind_cast1)))=9;
-G2phts25p0(ind_1039(ind_1039_station(ind_cast2(ind_bottle))))=9;
+G2phts25p0f(ind_1039(ind_1039_station(ind_cast1)))=flipud(G2phts25p0f(ind_1039(ind_1039_station(ind_cast1))));
+G2phts25p0f(ind_1039(ind_1039_station(ind_cast2(ind_bottle))))=9;
 G2phtsinsitutp(ind_1039(ind_1039_station(ind_cast1)))=NaN;
 G2phtsinsitutp(ind_1039(ind_1039_station(ind_cast2(ind_bottle))))=NaN;
 G2phtsinsitutpf(ind_1039(ind_1039_station(ind_cast1)))=9;
@@ -82,8 +78,42 @@ G2c13(ind_703(ind_703_station(ind_703_station_bottle)))=NaN;
 G2c13f(ind_703(ind_703_station(ind_703_station_bottle)))=9;
 clear ind*
 
-% Cruise 1040: Flag all variables station 52 due to bad temperature
+%Gerrard bottles
+ind_gerrard=find(G2bottle>=80 & ~isnan(G2c13));
+G2c13(ind_gerrard)=NaN;
+G2c13f(ind_gerrard)=9;
+
+% Update 33HQ20150809: Station 52 temperatures
+% Load data as structure
+cd 'E:\33HQ20150809'
+A=load('33HQ20150809.mat');
+
+% Find cruise number
+exno=find(strcmp(expocode,'33HQ20150809')==1);
+crno=expocodeno(exno);
+ind=find(G2cruise==crno);
+  
+% Find each sample individually as file and GLODAP do not fit 100%  
+Amatcher=cellstr(strcat(num2str(G2station(ind)),num2str(G2cast(ind)),num2str(G2bottle(ind))));
+Bmatcher=cellstr(strcat(num2str(A.STNNBR),num2str(A.CASTNO),num2str(A.BTLNBR)));
+for l=1:min(length(Amatcher),length(Bmatcher))
+    final{l}=find(strcmp(Amatcher{l},Bmatcher)==1);
+end
+final=final';
+
+% Assign new data
+for m=1:length(final) 
+    al=final{m};
+    if ~isempty(al)==1
+        if A.STNNBR(final{m}(1))==52
+            G2temperature(ind(m))=A.CTDTMP(final{m}(1));
+        end
+    end
+end
+    
+clear final file test A ans al crno exno Amatcher Bmatcher ind l m
 ind_final= 1078484:1078565;
+ind_no_temp=find(isnan(G2temperature(ind_final)));
 variables=who;
 
 % Delete general variables from list, e.g. G2bottle
@@ -96,30 +126,33 @@ end
 clear ii generals
 for i=1:length(variables)
     if strcmp(variables{i}(end),'f')==1
-        str=cat(2,variables{i},'(ind_final)', '=9;');
+        str=cat(2,variables{i},'(ind_final(ind_no_temp))', '=9;');
         eval(str)
     elseif strcmp(variables{i}(end),'qc')==1
-        str=cat(2,variables{i},'(ind_final)', '=0;');
+        str=cat(2,variables{i},'(ind_final(ind_no_temp))', '=0;');
         eval(str)    
     else
-        str=cat(2,variables{i},'(ind_final)', '=NaN;');
+        str=cat(2,variables{i},'(ind_final(ind_no_temp))', '=NaN;');
         eval(str)   
     end
 end
 
 clear ind_final i variables
-
+ 
 % Update 33RR20160208
 % Load data as structure
 cd 'E:\33RR20160208'
 A=load('33RR20160208.mat');
 A.DELC14(A.DELC14_FLAG_W~=2 & A.DELC14_FLAG_W~=6)=NaN;
 A.DELC14_FLAG_W(isnan(A.DELC14))=9;
+A.DOC(A.DOC_FLAG_W~=2 & A.DOC_FLAG_W~=6)=NaN;
+A.DOC_FLAG_W(isnan(A.DOC))=9;
 A.C14ERR(isnan(A.DELC14))=NaN;
 A.DELC13(A.DELC13_FLAG_W~=2 & A.DELC13_FLAG_W~=6)=NaN;
 A.DELC13_FLAG_W(isnan(A.DELC13))=9;
 A.CFC_11_FLAG_W(A.CFC_11_FLAG_W~=2 & A.CFC_11_FLAG_W~=6)=9;
 A.CFC_12_FLAG_W(A.CFC_12_FLAG_W~=2 & A.CFC_12_FLAG_W~=6)=9;
+A.CFC_113_FLAG_W(A.CFC_113_FLAG_W~=2 & A.CFC_113_FLAG_W~=6)=9;
 A.SF6_FLAG_W(A.SF6_FLAG_W~=2 & A.SF6_FLAG_W~=6)=9;
 A.CCL4_FLAG_W(A.CCL4_FLAG_W~=2 & A.CCL4_FLAG_W~=6)=9;
 
@@ -142,6 +175,8 @@ for m=1:length(final)
     if ~isempty(al)==1
         G2c13(ind(m))=A.DELC13(final{m}(1));
         G2c13f(ind(m))=A.DELC13_FLAG_W(final{m}(1));
+        G2doc(ind(m))=A.DOC(final{m}(1));
+        G2docf(ind(m))=A.DOC_FLAG_W(final{m}(1));
         G2c14(ind(m))=A.DELC14(final{m}(1));
         G2c14f(ind(m))=A.DELC14_FLAG_W(final{m}(1));
         G2c14err(ind(m))=A.C14ERR(final{m}(1));  
@@ -154,6 +189,11 @@ for m=1:length(final)
             G2cfc12(ind(m))=NaN;
             G2cfc12f(ind(m))=9;
             G2pcfc12(ind(m))=NaN;
+        end
+        if A.CFC_113_FLAG_W(final{m}(1))==9
+            G2cfc113(ind(m))=NaN;
+            G2cfc113f(ind(m))=9;
+            G2pcfc113(ind(m))=NaN;
         end
         if A.SF6_FLAG_W(final{m}(1))==9
             G2sf6(ind(m))=NaN;
@@ -319,12 +359,19 @@ G2tco2qc(ind)=1;
 G2talk(ind)=G2talk(ind)+6;
 clear ind
 
-% 49NZ20050525 TA adjustment
-ind=find(strcmp('49NZ20050525',expocode)==1);
+% 74EQ20151206 TA adjustment
+ind=find(strcmp('74EQ20151206',expocode)==1);
 ind=expocodeno(ind);
 ind=find(G2cruise==ind);
-G2talk(ind)=G2talk(ind)-4;
+G2tco2(ind)=G2tco2(ind)-4;
 clear ind
+
+% 49NZ20050525 TA adjustment
+% ind=find(strcmp('49NZ20050525',expocode)==1);
+% ind=expocodeno(ind);
+% ind=find(G2cruise==ind);
+% G2talk(ind)=G2talk(ind)-4;
+% clear ind
 
 cd 'E:\'
 save GLODAPv2.2019_updated_interim1.mat
@@ -414,9 +461,9 @@ for j=1:length(expocodeno)
            G2maxsampdepth(ind(ind_st))=max(G2pressure(ind(ind_st)));
         end
 
-        % Set bad bottomdepth to actual max pressure of station + 5m 
+        % Set bad bottomdepth to actual max pressure of station + 10m 
         if max(G2pressure(ind(ind_st)))>max(G2bottomdepth(ind(ind_st)))
-           G2bottomdepth(ind(ind_st))=max(G2pressure(ind(ind_st)))+5;
+           G2bottomdepth(ind(ind_st))=max(G2pressure(ind(ind_st)))+10;
         end
 
     end
@@ -427,14 +474,14 @@ end
 clear j i egal ind
 for i=1:length(G2pressure)
     if G2bottomdepth(i)<G2maxsampdepth(i)
-        G2bottomdepth(i)=G2maxsampdepth(i)+5;
+        G2bottomdepth(i)=G2maxsampdepth(i)+10;
     end
 end
 
 clear i j
 clear ans
-save('GLODAPV2.2019_updated_interim3.mat')
 
+save('GLODAPV2.2019_updated_interim3.mat')
 
 %% Add PCO2 data!
 %Create new empty columns 
@@ -525,7 +572,7 @@ for kk=1:length(fileNames)
 end
 
 % Assign pco2 temperatures (for the cruises where the data doesn't have the needed column, i.e. are set to NaN until now) 
-% First cruises with reported 20째C
+% First cruises with reported 20캜
 cruises_20={'06MT19900123','06MT19910210','06MT19940329','316N19871123','316N19970717','316N19970815','31WT19910716','33MW19930704'};
 for i=1:length(cruises_20)
     ind=find(strcmp(cruises_20{i},expocode)==1);
@@ -539,7 +586,7 @@ for i=1:length(cruises_20)
 end
 clear cruises_20 i nans ind
 
-% Cruise with 4째C
+% Cruise with 4캜
 ind=find(strcmp('320619960503',expocode)==1);
 ind=expocodeno(ind);
 ind=find(G2cruise==ind);
@@ -549,7 +596,7 @@ G2pcotemp(ind(nans))=4;
 
 clear nans ind
 
-%Cruises with inSitu(?) temperature
+%Cruises with inSitu temperature
 ind=find(strcmp('33LK19960415',expocode)==1);
 ind=expocodeno(ind);
 ind=find(G2cruise==ind);
@@ -676,13 +723,29 @@ G2pcof(isnan(G2pcotemp))=9;
 G2pco(isnan(G2pcotemp))=NaN;
 G2pcof(isnan(G2pco))=9;
 
+
+%% Marta's issues
+ind_pco2=[987763;987809]; %Cruise 172 with pco2>4500 (Hudson)
+G2pco2(ind_pco2)=NaN;
+G2pco2f(ind_pco2)=9;
+
+ind_c14=57513; % Cruise 27 with c14>450 (Gerrard bottle)
+G2c14(ind_c14)=NaN;
+G2c14f(ind_c14)=9;
+
+ind_sf6=1113093; % Cruise 1053 with jump in sf6 (all surroundings are 0)
+G2sf6(ind_sf6)=NaN;
+G2sf6f(ind_sf6)=9;
+
+clear ind*
+
 clearvars -except G2* expocode expocodeno
 cd 'E:\'
 save('GLODAPv2.2019_updated_interim4.mat')
 clear all
 
 
-%% Caluclate pco2 on constant 20째C
+%% Calculate pco2 on constant 20캜
 % Load GLODAP data as structure 
 G2=load('GLODAPv2.2019_updated_interim4.mat');
 
@@ -703,8 +766,12 @@ talk(isnan(talk))=G2.G2salinity(isnan(talk)).*67;
 ind=find(~isnan(G2.G2pcotemp));
 ind_temp=find(G2.G2pcotemp(ind)~=20);
 
-% Calculate values for 20째C using TA
-[DATA,~,~]=CO2SYS(talk(ind(ind_temp)),G2.G2pco(ind(ind_temp)),1,4,G2.G2salinity(ind(ind_temp)),G2.G2pcotemp(ind(ind_temp)),20,0,0,silicate(ind(ind_temp)),phosphate(ind(ind_temp)),1,10,1);
+% Calculate values for 20캜 using TA
+if G2.G2cruise(ind(ind_temp))~=334 & G2.G2cruise(ind(ind_temp))~=369 
+    [DATA,~,~]=CO2SYS(talk(ind(ind_temp)),G2.G2pco(ind(ind_temp)),1,4,G2.G2salinity(ind(ind_temp)),G2.G2pcotemp(ind(ind_temp)),20,0,0,silicate(ind(ind_temp)),phosphate(ind(ind_temp)),1,10,1);
+else
+    [DATA,~,~]=CO2SYS(talk(ind(ind_temp)),G2.G2pco(ind(ind_temp)),1,4,G2.G2salinity(ind(ind_temp)),G2.G2pcotemp(ind(ind_temp)),20,G2.G2pressure(ind(ind_temp)),0,silicate(ind(ind_temp)),phosphate(ind(ind_temp)),1,10,1);
+end    
 G2.G2pco(ind(ind_temp))=DATA(:,19);
 G2.G2temp(ind(ind_temp))=20;
 
@@ -718,6 +785,44 @@ clear ind*
 
 %% Calculate missing carbon parameters
 % First search for missing carbon parameters using the "old" method, i.e. only using pH, DIC and TA
+% Set measured values of cruises where number of calculated values are 2* larger (or equal to)
+% the number of measured values to NaN - note only if measured value can
+% indeed be replaced by calculated
+for i=1:length(G2.expocodeno)
+    % Loop cruise by cruise
+    ind=find(G2.G2cruise==i);
+    
+    % Find missing TCO2 values which can be calculated 
+    ind_misstco=find(isnan(G2.G2tco2(ind))==1 & G2.G2phts25p0f(ind)==2 & G2.G2talkf(ind)==2 & isnan(G2.G2salinity(ind))==0 & isnan(G2.G2oxygen(ind))==0);
+    if length(ind_misstco)>=2*length(find(G2.G2tco2f(ind)==2)) & length(find(G2.G2tco2f(ind)==2))>0
+        % If the conditions (described above) applies set all values to NaN
+        % which later on can be replaced by calculated ones
+        ind_misstco_new=find(G2.G2phts25p0f(ind)==2 & G2.G2talkf(ind)==2 & isnan(G2.G2salinity(ind))==0 & isnan(G2.G2oxygen(ind))==0);
+        G2.G2tco2f(ind(ind_misstco_new))=9;
+        G2.G2tco2(ind(ind_misstco_new))=NaN;
+    end
+    
+    % Find missing TA values which can be calculated 
+    ind_misstalk=find(G2.G2tco2f==2 & G2.G2phts25p0f==2 & isnan(G2.G2talk)==1 & isnan(G2.G2salinity)==0 & isnan(G2.G2oxygen)==0);
+    if length(ind_misstalk)>=2*length(find(G2.G2talkf(ind)==2)) & length(find(G2.G2talkf(ind)==2))>0
+        ind_misstalk_new=find(G2.G2phts25p0f(ind)==2 & G2.G2tco2f(ind)==2 & isnan(G2.G2salinity(ind))==0 & isnan(G2.G2oxygen(ind))==0);
+        G2.G2talkf(ind(ind_misstalk_new))=9;
+        G2.G2talk(ind(ind_misstalk_new))=NaN;
+    end
+    
+    % Find missing PH_TOT values which can be calculated 
+    ind_misspHtot=find(G2.G2tco2f==2 & isnan(G2.G2phts25p0)==1 & G2.G2talkf==2 & isnan(G2.G2salinity)==0 & isnan(G2.G2oxygen)==0);
+    if length(ind_misspHtot)>=2*length(find(G2.G2phts25p0f(ind)==2)) & length(find(G2.G2phts25p0f(ind)==2))>0
+        ind_misspHtot_new=find(G2.G2tco2f(ind)==2 & G2.G2talkf(ind)==2 & isnan(G2.G2salinity(ind))==0 & isnan(G2.G2oxygen(ind))==0);
+        G2.G2phts25p0f(ind(ind_misspHtot_new))=9;
+        G2.G2phts25p0(ind(ind_misspHtot_new))=NaN;
+    end
+    
+    clear ind*
+end
+
+% Now use "final" indexes to replace missing carbon parameters - not
+% considering pco2 for now
 ind_misstco=find(isnan(G2.G2tco2)==1 & G2.G2phts25p0f==2 & G2.G2talkf==2 & isnan(G2.G2salinity)==0 & isnan(G2.G2oxygen)==0);
 ind_misstalk=find(G2.G2tco2f==2 & G2.G2phts25p0f==2 & isnan(G2.G2talk)==1 & isnan(G2.G2salinity)==0 & isnan(G2.G2oxygen)==0);
 ind_misspHtot=find(G2.G2tco2f==2 & isnan(G2.G2phts25p0)==1 & G2.G2talkf==2 & isnan(G2.G2salinity)==0 & isnan(G2.G2oxygen)==0);
@@ -756,7 +861,7 @@ clearvars -except G2 talk silicate phosphate
 ind_misstco_ta=find(isnan(G2.G2tco2)==1 & G2.G2phts25p0f~=2 & G2.G2talkf==2 & G2.G2pcof==2 & isnan(G2.G2salinity)==0 & isnan(G2.G2oxygen)==0);
 ind_misstco_ph=find(isnan(G2.G2tco2)==1 & G2.G2phts25p0f==2 & G2.G2talkf~=2 & G2.G2pcof==2 & isnan(G2.G2salinity)==0 & isnan(G2.G2oxygen)==0);
 
-ind_missta_tco=find(isnan(G2.G2talk)==1 & G2.G2phts25p0f~=2 & G2.G2tco2f==2 & G2.G2pcof==2 & isnan(G2.G2salinity)==0 & isnan(G2.G2oxygen)==0);
+ind_missta_tco=find((isnan(G2.G2talk)==1 | G2.G2talkf==0) & G2.G2phts25p0f==9 & G2.G2tco2f==2 & G2.G2pcof==2 & isnan(G2.G2salinity)==0 & isnan(G2.G2oxygen)==0);
 ind_missta_ph=find(isnan(G2.G2talk)==1 & G2.G2phts25p0f==2 & G2.G2tco2f~=2 & G2.G2pcof==2 & isnan(G2.G2salinity)==0 & isnan(G2.G2oxygen)==0);
 
 ind_missph_ta=find(isnan(G2.G2phts25p0)==1 & G2.G2tco2f~=2 & G2.G2talkf==2 & G2.G2pcof==2 & isnan(G2.G2salinity)==0 & isnan(G2.G2oxygen)==0);
@@ -789,7 +894,7 @@ misspco_tco=CO2SYS(G2.G2phts25p0(ind_misspco_tco),G2.G2tco2(ind_misspco_tco),3,2
 G2.G2pco(ind_misspco_tco)=misspco_tco(:,19);
 
 % DIC and TA using pH
-% First calculate pco2 for 25째C to agree with pH input temperature and then do regular CO2SYS caluclation
+% First calculate pco2 for 25캜 to agree with pH input temperature and then do regular CO2SYS caluclation
 holder=CO2SYS(talk,G2.G2pco,1,4,G2.G2salinity,20,25,0,0,silicate,phosphate,1,10,1);
 holder_pco=holder(:,19);
 misstco_ph=CO2SYS(holder_pco(ind_misstco_ph),G2.G2phts25p0(ind_misstco_ph),4,3,G2.G2salinity(ind_misstco_ph),25,G2.G2temperature(ind_misstco_ph),0,G2.G2pressure(ind_misstco_ph),silicate(ind_misstco_ph),phosphate(ind_misstco_ph),1,10,1);
@@ -831,17 +936,17 @@ G2phts25p0=G2.G2phts25p0;
 G2phts25p0f=G2.G2phts25p0f;
 G2phtsinsitutp=G2.G2phtsinsitutp;
 G2phtsinsitutpf=G2.G2phtsinsitutpf;
-G2pco=G2.G2pco;
-G2pcof=G2.G2pcof;
-G2pcotemp=G2.G2pcotemp;
+G2pco2=G2.G2pco;
+G2pco2f=G2.G2pcof;
+G2pco2temp=G2.G2pcotemp;
 
 clear G2
 
 save('GLODAPv2.2019_updated_interim5.mat')
 
 %% Sort product according to: 1)Cruise 2)STNNBR 3)CTDPRS 4)BOTTLE
-variables={'G2cruise','G2station','G2cast','G2year','G2month','G2day','G2hour','G2minute','G2latitude','G2longitude','G2bottomdepth','G2maxsampdepth','G2bottle','G2pressure','G2depth','G2temperature','G2theta','G2salinity','G2salinityf','G2salinityqc','G2sigma0','G2sigma1','G2sigma2','G2sigma3','G2sigma4','G2gamma','G2oxygen','G2oxygenf','G2oxygenqc','G2aou','G2aouf','G2nitrate','G2nitratef','G2nitrateqc','G2nitrite','G2nitritef','G2silicate','G2silicatef','G2silicateqc','G2phosphate','G2phosphatef','G2phosphateqc','G2tco2','G2tco2f','G2tco2qc','G2talk','G2talkf','G2talkqc','G2pco','G2pcof','G2pcotemp','G2phts25p0','G2phts25p0f','G2phtsinsitutp','G2phtsinsitutpf','G2phtsqc','G2cfc11','G2pcfc11','G2cfc11f','G2cfc11qc','G2cfc12','G2pcfc12','G2cfc12f','G2cfc12qc','G2cfc113','G2pcfc113','G2cfc113f','G2cfc113qc','G2ccl4','G2pccl4','G2ccl4f','G2ccl4qc','G2sf6','G2psf6','G2sf6f','G2c13','G2c13f','G2c13qc','G2c14','G2c14f','G2c14err','G2h3','G2h3f','G2h3err','G2he3','G2he3f','G2he3err','G2he','G2hef','G2heerr','G2neon','G2neonf','G2neonerr','G2o18','G2o18f','G2toc','G2tocf','G2doc','G2docf','G2don','G2donf','G2tdn','G2tdnf','G2chla','G2chlaf'};
-Matrix=[G2cruise,G2station,G2cast,G2year,G2month,G2day,G2hour,G2minute,G2latitude,G2longitude,G2bottomdepth,G2maxsampdepth,G2bottle,G2pressure,G2depth,G2temperature,G2theta,G2salinity,G2salinityf,G2salinityqc,G2sigma0,G2sigma1,G2sigma2,G2sigma3,G2sigma4,G2gamma,G2oxygen,G2oxygenf,G2oxygenqc,G2aou,G2aouf,G2nitrate,G2nitratef,G2nitrateqc,G2nitrite,G2nitritef,G2silicate,G2silicatef,G2silicateqc,G2phosphate,G2phosphatef,G2phosphateqc,G2tco2,G2tco2f,G2tco2qc,G2talk,G2talkf,G2talkqc,G2pco,G2pcof,G2pcotemp,G2phts25p0,G2phts25p0f,G2phtsinsitutp,G2phtsinsitutpf,G2phtsqc,G2cfc11,G2pcfc11,G2cfc11f,G2cfc11qc,G2cfc12,G2pcfc12,G2cfc12f,G2cfc12qc,G2cfc113,G2pcfc113,G2cfc113f,G2cfc113qc,G2ccl4,G2pccl4,G2ccl4f,G2ccl4qc,G2sf6,G2psf6,G2sf6f,G2c13,G2c13f,G2c13qc,G2c14,G2c14f,G2c14err,G2h3,G2h3f,G2h3err,G2he3,G2he3f,G2he3err,G2he,G2hef,G2heerr,G2neon,G2neonf,G2neonerr,G2o18,G2o18f,G2toc,G2tocf,G2doc,G2docf,G2don,G2donf,G2tdn,G2tdnf,G2chla,G2chlaf];
+variables={'G2cruise','G2station','G2cast','G2year','G2month','G2day','G2hour','G2minute','G2latitude','G2longitude','G2bottomdepth','G2maxsampdepth','G2bottle','G2pressure','G2depth','G2temperature','G2theta','G2salinity','G2salinityf','G2salinityqc','G2sigma0','G2sigma1','G2sigma2','G2sigma3','G2sigma4','G2gamma','G2oxygen','G2oxygenf','G2oxygenqc','G2aou','G2aouf','G2nitrate','G2nitratef','G2nitrateqc','G2nitrite','G2nitritef','G2silicate','G2silicatef','G2silicateqc','G2phosphate','G2phosphatef','G2phosphateqc','G2tco2','G2tco2f','G2tco2qc','G2talk','G2talkf','G2talkqc','G2pco2','G2pco2f','G2phts25p0','G2phts25p0f','G2phtsinsitutp','G2phtsinsitutpf','G2phtsqc','G2cfc11','G2pcfc11','G2cfc11f','G2cfc11qc','G2cfc12','G2pcfc12','G2cfc12f','G2cfc12qc','G2cfc113','G2pcfc113','G2cfc113f','G2cfc113qc','G2ccl4','G2pccl4','G2ccl4f','G2ccl4qc','G2sf6','G2psf6','G2sf6f','G2c13','G2c13f','G2c13qc','G2c14','G2c14f','G2c14err','G2h3','G2h3f','G2h3err','G2he3','G2he3f','G2he3err','G2he','G2hef','G2heerr','G2neon','G2neonf','G2neonerr','G2o18','G2o18f','G2toc','G2tocf','G2doc','G2docf','G2don','G2donf','G2tdn','G2tdnf','G2chla','G2chlaf'};
+Matrix=[G2cruise,G2station,G2cast,G2year,G2month,G2day,G2hour,G2minute,G2latitude,G2longitude,G2bottomdepth,G2maxsampdepth,G2bottle,G2pressure,G2depth,G2temperature,G2theta,G2salinity,G2salinityf,G2salinityqc,G2sigma0,G2sigma1,G2sigma2,G2sigma3,G2sigma4,G2gamma,G2oxygen,G2oxygenf,G2oxygenqc,G2aou,G2aouf,G2nitrate,G2nitratef,G2nitrateqc,G2nitrite,G2nitritef,G2silicate,G2silicatef,G2silicateqc,G2phosphate,G2phosphatef,G2phosphateqc,G2tco2,G2tco2f,G2tco2qc,G2talk,G2talkf,G2talkqc,G2pco2,G2pco2f,G2phts25p0,G2phts25p0f,G2phtsinsitutp,G2phtsinsitutpf,G2phtsqc,G2cfc11,G2pcfc11,G2cfc11f,G2cfc11qc,G2cfc12,G2pcfc12,G2cfc12f,G2cfc12qc,G2cfc113,G2pcfc113,G2cfc113f,G2cfc113qc,G2ccl4,G2pccl4,G2ccl4f,G2ccl4qc,G2sf6,G2psf6,G2sf6f,G2c13,G2c13f,G2c13qc,G2c14,G2c14f,G2c14err,G2h3,G2h3f,G2h3err,G2he3,G2he3f,G2he3err,G2he,G2hef,G2heerr,G2neon,G2neonf,G2neonerr,G2o18,G2o18f,G2toc,G2tocf,G2doc,G2docf,G2don,G2donf,G2tdn,G2tdnf,G2chla,G2chlaf];
 Matrix=sortrows(Matrix,[1 2 14 13]);
 
 for i=1:length(variables)
